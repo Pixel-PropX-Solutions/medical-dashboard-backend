@@ -1,0 +1,55 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from app.database import connect_to_mongo, close_mongo_connection
+from app.config import settings
+from app.auth.routes import router as auth_router
+from app.clinics.routes import router as clinics_router
+from app.patients.routes import router as patients_router
+from app.visits.routes import router as visits_router
+from app.services.routes import router as services_router
+from app.billing.routes import router as billing_router
+from app.followups.routes import router as followups_router
+from app.templates.routes import router as templates_router
+from app.pdf.routes import router as pdf_router
+from app.exports.routes import router as exports_router
+from app.dashboard.routes import router as dashboard_router
+from app.utils.logger import log
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log.info("Starting up Clinic Management SaaS backend...")
+    await connect_to_mongo()
+    yield
+    log.info("Shutting down...")
+    await close_mongo_connection()
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    redoc_url=None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(clinics_router, prefix=settings.API_V1_STR)
+app.include_router(patients_router, prefix=settings.API_V1_STR)
+app.include_router(visits_router, prefix=settings.API_V1_STR)
+app.include_router(services_router, prefix=settings.API_V1_STR)
+app.include_router(billing_router, prefix=settings.API_V1_STR)
+app.include_router(followups_router, prefix=settings.API_V1_STR)
+app.include_router(templates_router, prefix=settings.API_V1_STR)
+app.include_router(pdf_router, prefix=settings.API_V1_STR)
+app.include_router(exports_router, prefix=settings.API_V1_STR)
+app.include_router(dashboard_router, prefix=settings.API_V1_STR)
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}

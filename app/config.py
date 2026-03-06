@@ -1,0 +1,18 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Clinic Management SaaS"
+    API_V1_STR: str = "/api/v1"
+    
+    # MongoDB Config
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "clinic_saas_db"
+    
+    # Auth Config
+    SECRET_KEY: str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" # Replace in production
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
+
+settings = Settings()
