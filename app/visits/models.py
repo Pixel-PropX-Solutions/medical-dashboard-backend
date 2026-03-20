@@ -3,10 +3,12 @@ from typing import Optional, List
 from datetime import datetime
 from app.auth.models import PyObjectId
 
+
 class ServiceItem(BaseModel):
     service_id: str
     service_name: str
     price: float
+
 
 class VisitBase(BaseModel):
     patient_id: str
@@ -21,12 +23,16 @@ class VisitBase(BaseModel):
     medicines: Optional[List[str]] = []
     services_used: Optional[List[ServiceItem]] = []
 
+
 class VisitCreate(VisitBase):
     pass
+
 
 class VisitInDB(VisitBase):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     clinic_id: str
+    token_number: int
+    receipt_number: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)

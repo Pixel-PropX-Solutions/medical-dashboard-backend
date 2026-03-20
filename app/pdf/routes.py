@@ -65,6 +65,8 @@ async def get_pdf_content(visit_id: str, template_id: str, current_user: TokenDa
         "payment_method": str(visit.get("payment_method", "Cash")),
         "date": visit_date.strftime("%d-%m-%Y"),
         "time": visit_date.strftime("%I:%M %p"),
+        "token_number": str(visit.get("token_number", "")),
+        "receipt_number": str(visit.get("receipt_number", "")),
         
         "datetime": visit_date.strftime("%d-%m-%Y %I:%M %p"),
         "medicines": ", ".join(visit.get("medicines", [])),

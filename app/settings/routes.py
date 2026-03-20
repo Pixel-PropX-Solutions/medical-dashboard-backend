@@ -2,21 +2,23 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.auth.dependencies import get_current_clinic_user
 from app.auth.models import TokenData
 from app.auth.pass_utils import verify_password, get_password_hash
-from app.clinics.models import ClinicSettingsUpdate
+from app.clinics.models import ClinicSettingsUpdate, normalize_clinic_doctors_data
 from app.database import get_db
 from app.config import settings
 from bson import ObjectId
 from pydantic import BaseModel
 from typing import Optional
-import cloudinary
-import cloudinary.uploader
+
+# import cloudinary
+# import cloudinary.uploader
+from app.utils.cloudinary import cloudinary_client
 
 # Configure Cloudinary
-cloudinary.config(
-    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-    api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET,
-)
+# cloudinary.config(
+#     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+#     api_key=settings.CLOUDINARY_API_KEY,
+#     api_secret=settings.CLOUDINARY_API_SECRET,
+# )
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -66,7 +68,7 @@ async def get_profile(current_user: TokenData = Depends(get_current_clinic_user)
         raise HTTPException(status_code=404, detail="Clinic not found")
 
     clinic["_id"] = str(clinic["_id"])
-    return clinic
+    return normalize_clinic_doctors_data(clinic)
 
 
 # --- Update Clinic Profile (name, phone, logo_url, default_template_id) ---
@@ -77,6 +79,10 @@ async def update_profile(
 ):
     db = get_db()
     data = {k: v for k, v in update_data.model_dump().items() if v is not None}
+
+    if data.get("doctors"):
+        data["default_doctor_name"] = data["doctors"][0]["name"]
+        data["default_doctor_fee"] = data["doctors"][0]["fee"]
 
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -90,7 +96,7 @@ async def update_profile(
 
     updated = await db.clinics.find_one({"_id": ObjectId(current_user.clinic_id)})
     updated["_id"] = str(updated["_id"])
-    return updated
+    return normalize_clinic_doctors_data(updated)
 
 
 # --- Upload Logo to Cloudinary ---
@@ -102,20 +108,14 @@ async def upload_logo(
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    # Max 2MB
-    contents = await file.read()
-    if len(contents) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size must be less than 2MB")
+
+    if hasattr(file, "size") and file.size > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds the 5 MB limit.")
 
     try:
-        result = cloudinary.uploader.upload(
-            contents,
-            folder="clinic_logos",
-            public_id=f"clinic_{current_user.clinic_id}",
-            overwrite=True,
-            resource_type="image",
-        )
-        logo_url = result["secure_url"]
+        upload_result = await cloudinary_client.upload_file(file)
+        logo_url = upload_result["url"]
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 

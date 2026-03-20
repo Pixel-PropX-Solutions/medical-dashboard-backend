@@ -8,6 +8,7 @@ from app.templates.models import (
 )
 from app.auth.dependencies import get_current_clinic_user, get_current_admin
 from app.auth.models import TokenData
+from app.clinics.models import normalize_clinic_doctors_data
 from app.database import get_db
 from bson import ObjectId
 from datetime import datetime
@@ -39,6 +40,19 @@ async def list_templates(current_user: TokenData = Depends(get_current_clinic_us
     clinic = None
     if current_user.clinic_id:
         clinic = await db.clinics.find_one({"_id": ObjectId(current_user.clinic_id)})
+        if clinic:
+            clinic = normalize_clinic_doctors_data(clinic)
+
+    doctor_name = ""
+    doctor_fee = 0
+    if clinic:
+        doctors = clinic.get("doctors") or []
+        if doctors:
+            doctor_name = str(doctors[0].get("name", ""))
+            doctor_fee = int(doctors[0].get("fee", 0) or 0)
+        else:
+            doctor_name = str(clinic.get("default_doctor_name", ""))
+            doctor_fee = int(clinic.get("default_doctor_fee", 0) or 0)
 
     now = datetime.utcnow()
     dummy_variables = {
@@ -49,8 +63,8 @@ async def list_templates(current_user: TokenData = Depends(get_current_clinic_us
         "gender": "Male",
         "sex": "Male",
         "address": "Sample Street, Sample City",
-        "fees": str(clinic.get("default_doctor_fee", 0)) if clinic else "0",
-        "dr_name": str(clinic.get("default_doctor_name", "")) if clinic else "",
+        "fees": str(doctor_fee),
+        "dr_name": doctor_name,
         "disease": "Fever",
         "diagnosis": "General Checkup",
         "specialization": "General Medicine",
@@ -59,6 +73,8 @@ async def list_templates(current_user: TokenData = Depends(get_current_clinic_us
         "date": now.strftime("%d-%m-%Y"),
         "time": now.strftime("%I:%M %p"),
         "datetime": now.strftime("%d-%m-%Y %I:%M %p"),
+        "token_number": "12",
+        "receipt_number": "2026-03-20-12",
         "medicines": "Paracetamol, Vitamin C",
         "clinic_name": str(clinic.get("name", "")) if clinic else "",
         "clinic_phone": str(clinic.get("phone", "")) if clinic else "",

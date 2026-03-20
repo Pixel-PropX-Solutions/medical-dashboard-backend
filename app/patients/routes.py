@@ -74,28 +74,6 @@ async def search_patients(
     return items
 
 
-@router.post("/migrate/remove-embedded-visits")
-async def remove_embedded_visits_from_patients(
-    current_user: TokenData = Depends(get_current_clinic_user),
-):
-    db = get_db()
-    result = await db.patients.update_many(
-        {
-            "clinic_id": current_user.clinic_id,
-            "visits": {"$exists": True},
-        },
-        {
-            "$unset": {"visits": ""},
-        },
-    )
-
-    return {
-        "message": "Embedded visits removed for clinic patients",
-        "matched_count": result.matched_count,
-        "modified_count": result.modified_count,
-    }
-
-
 @router.get("/{id}")
 async def get_patient(
     id: str, current_user: TokenData = Depends(get_current_clinic_user)
