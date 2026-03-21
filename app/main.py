@@ -14,6 +14,7 @@ from app.pdf.routes import router as pdf_router
 from app.exports.routes import router as exports_router
 from app.dashboard.routes import router as dashboard_router
 from app.settings.routes import router as settings_router
+from app.contact.routes import router as contact_router
 from app.utils.logger import log
 
 
@@ -55,6 +56,7 @@ app.include_router(pdf_router, prefix=settings.API_V1_STR)
 app.include_router(exports_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(settings_router, prefix=settings.API_V1_STR)
+app.include_router(contact_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health")

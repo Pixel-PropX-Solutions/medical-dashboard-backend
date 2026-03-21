@@ -4,21 +4,10 @@ from app.auth.models import TokenData
 from app.auth.pass_utils import verify_password, get_password_hash
 from app.clinics.models import ClinicSettingsUpdate, normalize_clinic_doctors_data
 from app.database import get_db
-from app.config import settings
 from bson import ObjectId
 from pydantic import BaseModel
-from typing import Optional
-
-# import cloudinary
-# import cloudinary.uploader
 from app.utils.cloudinary import cloudinary_client
 
-# Configure Cloudinary
-# cloudinary.config(
-#     cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-#     api_key=settings.CLOUDINARY_API_KEY,
-#     api_secret=settings.CLOUDINARY_API_SECRET,
-# )
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 

@@ -20,21 +20,15 @@ from app.auth.models import TokenData
 from app.database import get_db
 from bson import ObjectId
 from app.auth.pass_utils import get_password_hash
-from app.utils.email import send_email
-from app.config import settings
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
 from collections import defaultdict
 import random
 import string
-import cloudinary
-import cloudinary.uploader
+from app.utils.cloudinary import cloudinary_client
+from app.utils.mail_module import template
+from app.utils.mail_module import mail
 
-# Configure Cloudinary
-cloudinary.config(
-    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-    api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET,
-)
+
 router = APIRouter(prefix="/clinics", tags=["Clinics"])
 
 
@@ -71,7 +65,7 @@ async def create_clinic(
 
         new_user = {
             "email": clinic.email,
-            "username": clinic.email,  # To satisfy any existing legacy index on username
+            "username": clinic.email,
             "role": "clinic_user",
             "clinic_id": str(result.inserted_id),
             "hashed_password": hashed_password,
@@ -79,10 +73,16 @@ async def create_clinic(
         }
         await db.users.insert_one(new_user)
 
-        email_subject = "Welcome to Medical Dashboard"
-        email_body = f"Hello {clinic.name},\n\nYour account has been created successfully.\nYour login credentials are:\nEmail: {clinic.email}\nPassword: {default_password}\n\nPlease login and change your password.\n\nBest Regards,\nThe Team"
-
-        background_tasks.add_task(send_email, clinic.email, email_subject, email_body)
+        background_tasks.add_task(
+            mail.send,
+            "Welcome to Clinova",
+            clinic.email,
+            template.Onboard(
+                email=clinic.email,
+                password=default_password,
+                name=clinic.name,
+            ),
+        )
 
     return normalize_clinic_doctors_data(created_clinic)
 
@@ -99,7 +99,9 @@ async def list_clinics(current_user=Depends(get_current_admin)):
 
 @router.patch("/{clinic_id}", response_model=ClinicInDB)
 async def update_clinic(
-    clinic_id: str, clinic_update: ClinicUpdate, current_user=Depends(get_current_clinic_user)
+    clinic_id: str,
+    clinic_update: ClinicUpdate,
+    current_user=Depends(get_current_clinic_user),
 ):
     db = get_db()
     update_data = {k: v for k, v in clinic_update.model_dump().items() if v is not None}
@@ -236,16 +238,14 @@ async def upload_clinic_logo(
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
-    contents = await file.read()
+
+    if hasattr(file, "size") and file.size > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds the 5 MB limit.")
+
     try:
-        result = cloudinary.uploader.upload(
-            contents,
-            folder="clinic_logos",
-            public_id=f"clinic_{clinic_id}",
-            overwrite=True,
-            resource_type="image",
-        )
-        logo_url = result["secure_url"]
+        upload_result = await cloudinary_client.upload_file(file)
+        logo_url = upload_result["url"]
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
