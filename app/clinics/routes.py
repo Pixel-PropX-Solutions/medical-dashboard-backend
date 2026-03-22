@@ -149,13 +149,88 @@ async def add_clinic_doctor(
     if any(d["name"].lower() == doctor_name.lower() for d in existing_doctors):
         raise HTTPException(status_code=400, detail="Doctor already exists")
 
-    new_doctor = {"name": doctor_name, "fee": doctor.fee}
+    new_doctor = doctor.model_dump()
     existing_doctors.append(new_doctor)
 
     update_data = {"doctors": existing_doctors}
-    if len(existing_doctors) == 1:
-        update_data["default_doctor_name"] = new_doctor["name"]
-        update_data["default_doctor_fee"] = new_doctor["fee"]
+
+    await db.clinics.update_one(
+        {"_id": ObjectId(clinic_id)},
+        {"$set": update_data},
+    )
+
+    updated_clinic = await db.clinics.find_one({"_id": ObjectId(clinic_id)})
+    return normalize_clinic_doctors_data(updated_clinic)
+
+
+@router.put("/{clinic_id}/doctors/{doctor_id}", response_model=ClinicInDB)
+async def update_clinic_doctor(
+    clinic_id: str,
+    doctor_id: str,
+    doctor: ClinicDoctor,
+    current_user: TokenData = Depends(get_current_clinic_user),
+):
+    db = get_db()
+    if not ObjectId.is_valid(clinic_id):
+        raise HTTPException(status_code=400, detail="Invalid clinic ID")
+    if current_user.role == "clinic_user" and current_user.clinic_id != clinic_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    clinic = await db.clinics.find_one({"_id": ObjectId(clinic_id)})
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+
+    doctor_name = doctor.name.strip()
+    if not doctor_name:
+        raise HTTPException(status_code=400, detail="Doctor name is required")
+
+    normalized_clinic = normalize_clinic_doctors_data(clinic)
+    existing_doctors = normalized_clinic.get("doctors", [])
+    
+    doctor_idx = next((i for i, d in enumerate(existing_doctors) if d.get("id") == doctor_id), None)
+    if doctor_idx is None:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    doctor_dump = doctor.model_dump()
+    doctor_dump["id"] = doctor_id
+    existing_doctors[doctor_idx] = doctor_dump
+
+    update_data = {"doctors": existing_doctors}
+
+    await db.clinics.update_one(
+        {"_id": ObjectId(clinic_id)},
+        {"$set": update_data},
+    )
+
+    updated_clinic = await db.clinics.find_one({"_id": ObjectId(clinic_id)})
+    return normalize_clinic_doctors_data(updated_clinic)
+
+
+@router.delete("/{clinic_id}/doctors/{doctor_id}", response_model=ClinicInDB)
+async def delete_clinic_doctor(
+    clinic_id: str,
+    doctor_id: str,
+    current_user: TokenData = Depends(get_current_clinic_user),
+):
+    db = get_db()
+    if not ObjectId.is_valid(clinic_id):
+        raise HTTPException(status_code=400, detail="Invalid clinic ID")
+    if current_user.role == "clinic_user" and current_user.clinic_id != clinic_id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    clinic = await db.clinics.find_one({"_id": ObjectId(clinic_id)})
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+
+    normalized_clinic = normalize_clinic_doctors_data(clinic)
+    existing_doctors = normalized_clinic.get("doctors", [])
+    
+    doctor_idx = next((i for i, d in enumerate(existing_doctors) if d.get("id") == doctor_id), None)
+    if doctor_idx is None:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    existing_doctors.pop(doctor_idx)
+    update_data = {"doctors": existing_doctors}
 
     await db.clinics.update_one(
         {"_id": ObjectId(clinic_id)},

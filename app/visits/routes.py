@@ -53,7 +53,7 @@ async def create_visit(
 
     clinic = await db.clinics.find_one(
         {"_id": ObjectId(current_user.clinic_id)},
-        {"doctors": 1, "default_doctor_name": 1, "default_doctor_fee": 1},
+        {"doctors": 1},
     )
     clinic = normalize_clinic_doctors_data(clinic or {})
 

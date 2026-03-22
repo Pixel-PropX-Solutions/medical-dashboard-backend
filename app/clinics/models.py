@@ -4,9 +4,13 @@ from datetime import datetime
 from app.auth.models import PyObjectId
 
 
+import uuid
+
 class ClinicDoctor(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     fee: int = 0
+    specialization: Optional[str] = None
 
 
 def normalize_clinic_doctors_data(clinic: Dict[str, Any]) -> Dict[str, Any]:
@@ -21,29 +25,14 @@ def normalize_clinic_doctors_data(clinic: Dict[str, Any]) -> Dict[str, Any]:
             continue
         normalized_doctors.append(
             {
+                "id": doctor.get("id") or str(uuid.uuid4()),
                 "name": doctor_name,
                 "fee": int(doctor.get("fee", 0) or 0),
+                "specialization": doctor.get("specialization"),
             }
         )
 
-    if not normalized_doctors:
-        legacy_name = str(clinic.get("default_doctor_name", "")).strip()
-        if legacy_name:
-            normalized_doctors.append(
-                {
-                    "name": legacy_name,
-                    "fee": int(clinic.get("default_doctor_fee", 0) or 0),
-                }
-            )
-
     clinic["doctors"] = normalized_doctors
-
-    if normalized_doctors:
-        if not clinic.get("default_doctor_name"):
-            clinic["default_doctor_name"] = normalized_doctors[0]["name"]
-        if clinic.get("default_doctor_fee") is None:
-            clinic["default_doctor_fee"] = normalized_doctors[0]["fee"]
-
     return clinic
 
 
@@ -55,8 +44,6 @@ class ClinicBase(BaseModel):
     plan: str = "basic"
     logo_url: Optional[str] = None
     default_template_id: Optional[str] = None
-    default_doctor_name: Optional[str] = None
-    default_doctor_fee: Optional[int] = 0
     doctors: Optional[List[ClinicDoctor]] = Field(default_factory=list)
 
 
@@ -80,8 +67,6 @@ class ClinicSettingsUpdate(BaseModel):
     address: Optional[str] = None
     logo_url: Optional[str] = None
     default_template_id: Optional[str] = None
-    default_doctor_name: Optional[str] = None
-    default_doctor_fee: Optional[int] = 0
     doctors: Optional[List[ClinicDoctor]] = None
 
 

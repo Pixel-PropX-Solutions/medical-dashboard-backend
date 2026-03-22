@@ -44,6 +44,8 @@ async def get_pdf_content(visit_id: str, template_id: str, current_user: TokenDa
     visit_date = visit.get("visited_at") or visit.get("created_at") or datetime.utcnow()
     if isinstance(visit_date, str):
         visit_date = datetime.fromisoformat(visit_date)
+    
+    print(clinic)
 
     variables = {
         # Patient
@@ -83,10 +85,13 @@ async def get_pdf_content(visit_id: str, template_id: str, current_user: TokenDa
     import re
     html_content = template_doc["html_content"]
 
-    # Matches ${key} and {{key}} patterns in one pass
-    html_content = re.sub(r'\$\{([^}]+)\}|\{\{([^}]+)\}\}', 
-        lambda m: variables.get(m.group(1) or m.group(2), m.group(0)), 
-        html_content
+    # Matches ${key}, {{key}}, and {key} patterns in one pass
+    html_content = re.sub(
+        r"\$\{([^}]+)\}|\{\{([^}]+)\}\}|\{([^{}]+)\}",
+        lambda m: variables.get(
+            (m.group(1) or m.group(2) or m.group(3)).strip(), m.group(0)
+        ),
+        html_content,
     )
     
     return {"html": html_content}

@@ -136,12 +136,6 @@ async def get_dashboard_stats(
         "payment_breakdown": dict(payment_breakdown),
         "monthly_revenue": monthly_revenue_list,
         "daily_revenue": daily_revenue_list,
-        "demographics": {
-            "gender": gender_distribution,
-            "age": [
-                {"group": k, "count": v} for k, v in age_groups.items()
-            ]
-        },
         "date_range": {
             "start": start_date.isoformat(),
             "end": end_date.isoformat()

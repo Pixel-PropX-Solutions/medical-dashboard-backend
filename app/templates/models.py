@@ -5,7 +5,6 @@ from app.auth.models import PyObjectId
 
 class TemplateBase(BaseModel):
     template_name: str
-    template_type: str # invoice, medical_parchi, receipt
     html_content: str
     is_global: bool = False
     
@@ -17,7 +16,6 @@ class TemplateCreateAdmin(TemplateBase):
 
 class TemplateUpdate(BaseModel):
     template_name: Optional[str] = None
-    template_type: Optional[str] = None
     html_content: Optional[str] = None
 
 class TemplateUpdateAdmin(TemplateUpdate):

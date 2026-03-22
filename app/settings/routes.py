@@ -69,9 +69,7 @@ async def update_profile(
     db = get_db()
     data = {k: v for k, v in update_data.model_dump().items() if v is not None}
 
-    if data.get("doctors"):
-        data["default_doctor_name"] = data["doctors"][0]["name"]
-        data["default_doctor_fee"] = data["doctors"][0]["fee"]
+
 
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")

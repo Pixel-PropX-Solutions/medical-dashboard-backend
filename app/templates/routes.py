@@ -50,11 +50,9 @@ async def list_templates(current_user: TokenData = Depends(get_current_clinic_us
         if doctors:
             doctor_name = str(doctors[0].get("name", ""))
             doctor_fee = int(doctors[0].get("fee", 0) or 0)
-        else:
-            doctor_name = str(clinic.get("default_doctor_name", ""))
-            doctor_fee = int(clinic.get("default_doctor_fee", 0) or 0)
 
     now = datetime.utcnow()
+    print(clinic)
     dummy_variables = {
         "name": "John Doe",
         "phone": "9876543210",
